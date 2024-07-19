@@ -1,215 +1,23 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >0.8.20;
+// Compatible with OpenZeppelin Contracts ^5.0.0
+pragma solidity ^0.8.20;
 
-library SafeMath {
-    function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
-        if (a == 0) {
-            return 0;
-        }
-        c = a * b;
-        assert(c / a == b);
-        return c;
-    }
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        // assert(b > 0); // Solidity automatically throws when dividing by 0
-        // uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-        return a / b;
-    }
+contract MyToken is ERC20, ERC20Burnable, Ownable {
 
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        assert(b <= a);
-        return a - b;
-    }
-
-    function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
-        c = a + b;
-        assert(c >= a);
-        return c;
-    }
-}
-
-// Contrato para chamar quando alguém aprova uma transferência de tokens para um contrato específico
-interface ERC20Interface {
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256 balance);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool success);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256 remaining);
-
-    function approve(address spender, uint256 amount)
-        external
-        returns (bool success);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool success);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
-interface ApproveAndCallFallBack {
-    function receiveApproval(
-        address from,
-        uint256 tokens,
-        address token,
-        bytes memory data
-    ) external;
-}
-
-contract myToken is ERC20Interface {
-    string public symbol;
-    string public name;
-    uint8 public decimals;
-    uint256 public _totalSupply;
-    uint256 public mintToken;
-    uint256 public burnToken;
-    uint256 public totalTransfer;
-    event TransferWithBlock(
-        address from,
-        address to,
-        uint256 amount,
-        uint256 blockNumber,
-        uint256 timestamp
-    );
-
-    mapping(address => uint256) balances;
-    mapping(address => mapping(address => uint256)) allowed;
-
-    constructor() {
-        symbol = "HJK";
-        name = "Token HJK";
-        decimals = 2;
-        _totalSupply = 1000.00;
-        balances[msg.sender] = _totalSupply;
-        emit Transfer(address(0), msg.sender, _totalSupply);
-    }
-
-    //Retorna o fornecimento total de tokens do contrato
-    function totalSupply() public view override returns (uint256) {
-        return _totalSupply - balances[address(0)];
-    }
-
-    // Retorna o saldo de tokens detidos pelo enderço owner
-    function balanceOf(address tokenOwner)
-        public
-        view
-        override
-        returns (uint256 balance)
+    constructor()
+        ERC20("MyToken", "HJK")
+        Ownable(msg.sender)
     {
-        return balances[tokenOwner];
+        _mint(msg.sender, 1000 * 10 ** decimals());
     }
 
-    // enviar uma quantidade de tokens para endereço "to"
-    function transfer(address to, uint256 tokens)
-        public
-        override
-        returns (bool success)
-    {
-        require(balances[msg.sender] >= tokens, "Saldo insuficiente");
-        balances[msg.sender] = balances[msg.sender] -= tokens;
-        balances[to] = balances[to] += tokens;
-        totalTransfer = totalTransfer += tokens;
-        emit Transfer(msg.sender, to, tokens);
-        emit TransferWithBlock(
-            msg.sender,
-            to,
-            tokens,
-            block.number,
-            block.timestamp
-        );
-        return true;
-    }
-
-    // proprietário dos tokens aprove um endereço específico (spender) a gastar uma quantidade especificada de tokens em seu nome
-    function approve(address spender, uint256 tokens)
-        public
-        override
-        returns (bool success)
-    {
-        allowed[msg.sender][spender] = tokens;
-        emit Approval(msg.sender, spender, tokens);
-        return true;
-    }
-
-    // Permite que o contrato do token mova tokens da conta de um remetente (from) para a conta de um destinatário (to)
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokens
-    ) public override returns (bool success) {
-        require(balances[msg.sender] >= tokens, "Saldo insuficiente");
-        require(allowed[from][msg.sender] >= tokens, "Permissao Insuficiente");
-
-        balances[from] = balances[from] -= tokens;
-        allowed[from][msg.sender] = allowed[from][msg.sender] -= tokens;
-        balances[to] = balances[to] += tokens;
-
-        emit Transfer(from, to, tokens);
-        return true;
-    }
-
-    //Retorna a quantidade de tokens que um endereço (spender) está autorizado a gastar em nome de outro endereço (tokenOwner)
-    function allowance(address tokenOwner, address spender)
-        public
-        view
-        override
-        returns (uint256 remaining)
-    {
-        return allowed[tokenOwner][spender];
-    }
-
-    // Permite que o remetente aprove um endereço (spender) a gastar uma quantidade específica de tokens em seu nome
-    function approveAndCall(
-        address spender,
-        uint256 tokens,
-        bytes memory data
-    ) public returns (bool success) {
-        allowed[msg.sender][spender] = tokens;
-        emit Approval(msg.sender, spender, tokens);
-        ApproveAndCallFallBack(spender).receiveApproval(
-            msg.sender,
-            tokens,
-            address(this),
-            data
-        );
-        return true;
-    }
-
-    // Permite que o proprietário do contrato (quem o implantou) crie novos tokens, adicionando-os ao saldo do contrato
-    function mint(uint256 amount) public {
-        balances[msg.sender] = balances[msg.sender] += amount;
-        _totalSupply = _totalSupply += amount;
-        mintToken = mintToken += amount;
-        emit Transfer(address(0), msg.sender, amount);
-    }
-
-    //Permite que o proprietário do contrato destrua tokens, removendo-os do saldo do contrato
-    function burn(uint256 amount) external {
-        balances[msg.sender] = balances[msg.sender] -= amount;
-        _totalSupply = _totalSupply -= amount;
-        burnToken = burnToken += amount;
-        emit Transfer(msg.sender, address(0), amount);
-    }
-
-    // rejeitar todas as transferências de Ether que não correspondam a nenhuma função específica do contrato
-    receive() external payable {
-        revert();
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 }
 
@@ -217,8 +25,13 @@ error Staking__TransferFailed();
 error Withdraw__TransferFailed();
 error Staking__NeedsMoreThanZero();
 
-contract Stake is myToken{
-    using SafeMath for uint256;
+contract Stake { 
+    MyToken private mytoken;
+
+    constructor(address tokenAddress) {
+        mytoken = MyToken(tokenAddress);
+    }
+
     mapping(address => uint) public stakers;
     uint public totalSupplyStaked;
     // rastreio de tempo
@@ -228,8 +41,7 @@ contract Stake is myToken{
     uint public constant rewardRate = 2; // taxa de 2%
     uint public constant rewardPeriod = 30; // ganho a cada 30s
 
-    constructor() {
-    }
+    event ApprovalStake(address approver, address spender, uint amount);
 
     modifier updateData(address staker) {
         uint reward = policyRewardsperToken(staker);
@@ -238,36 +50,35 @@ contract Stake is myToken{
         _;
     }
 
-    // function returnBalanceHJK() public view returns (uint256) {
-    //     return balanceOf(msg.sender);
-    // }
-
-    // modifier para verificar se o saldo é maior que 0
-    modifier moreThen0() {
-        if (balanceOf(msg.sender) == 0) {
-            revert Staking__NeedsMoreThanZero();
-        }
-        _;
+    function getInstanceToken() public view returns(MyToken) {
+        return mytoken;
     }
-
+    
     // stake
-    function stake(uint256 _amount) external updateData(msg.sender) moreThen0 {
-        require(
-            balanceOf(msg.sender) >= _amount,
-            "Staking: Not enough balance to stake"
-        );
+    function stake(uint256 _amount) external updateData(msg.sender) {
+        require(_amount > 0, "Staking: Amount must be greater than zero");
+
+        // Transfer tokens from user to contract
+        bool success = mytoken.transferFrom(msg.sender, address(this), _amount);
+        if (!success) {
+            revert Staking__TransferFailed(); 
+        }
 
         stakers[msg.sender] += _amount;
         totalSupplyStaked += _amount;
-        transferFrom(msg.sender, address(this), _amount);
+
+        emit ApprovalStake(msg.sender, address(this), _amount);
     }
 
     // unstaked
-    function unstaked(uint _amount) updateData(msg.sender) external {
+    function unstaked(uint _amount) external updateData(msg.sender) {
         require(stakers[msg.sender] >= _amount, "Withdraw__TransferFailed");
+
         stakers[msg.sender] -= _amount;
         totalSupplyStaked -= _amount;
-        transfer(msg.sender, _amount);
+
+        // Transfer tokens from contract to user
+        mytoken.transfer(msg.sender, _amount);
     }
 
     // policy rewards
@@ -288,10 +99,16 @@ contract Stake is myToken{
     function claimRewards() external updateData(msg.sender) {
         uint reward = rewardAcumulatedPerUser[msg.sender];
         require(reward > 0, "No rewards available");
-        mint(reward);
+
+        mytoken.mint(address(this), reward);
         rewardAcumulatedPerUser[msg.sender] = 0;
-        transfer(msg.sender, reward);
+        mytoken.transfer(msg.sender, reward);
     }
+
+    // All rewards for withdraw
+    // function totalWithdrawPerUser() external view returns(uint) {
+    //     return policyRewardsperToken(msg.sender) + rewardAcumulatedPerUser[msg.sender];
+    // }
 }
 
 
@@ -299,7 +116,28 @@ contract Stake is myToken{
 // Terá que pagar os juros de acordo com valor pego e quanto tempo de empréstimo
 // O token seguirá o padrão ERC-20
 
-contract Loan is Stake {
+contract Borrow {
+
+    Stake private stakeInstance;
+    MyToken private myToken;
+
+    constructor(address addrStake) {
+        
+        stakeInstance = Stake(addrStake);
+        myToken = MyToken(stakeInstance.getInstanceToken());
+    }
+ 
+    modifier onlyOwner() {
+        require(msg.sender == myToken.owner(), "only owner");
+        _;
+    }
+
+    // i[0] => PaidOut, i[1] => NotPay
+    enum LoanStatus{PaidOut, NotPay}
+
+    // i[0] => PaymentLate, i[1] => BadConduct, i[2] => Others
+    enum ReasonDeny{PaymentLate, BadConduct, Others}
+
     struct Loans {
         uint256 valueLoan;
         uint256 initialDateAgreement;
@@ -307,56 +145,47 @@ contract Loan is Stake {
         uint256 fees;
         uint256 valueFees;
         bool activate;
+        LoanStatus status;
     }
-    
+
+
     mapping(address => Loans) public userLoans;
     mapping(address => bool) public userDeny;
-    event userDenyEvent(address addressDeny, string reason);
-    event userMakeLoan(address addressUser, uint amount, uint initialDate, uint finalDate);
-    address internal owner;
-    uint constant internal VALUEVERIFYMIN = 200;
-    uint constant internal VALUEVERIFYMED = 200;
-    uint constant internal VALUEVERIFYMAX = 500;
-
-    constructor() {
-        owner = msg.sender;
-
-        approve(address(this), balanceOf(owner));
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "You not a owner");
-        _;
-    }
+    event usersDenyEvent(address addressDeny, ReasonDeny rd);
+    event usersMakeLoan(address addressUser,uint256 amount,uint256 initialDate,uint256 finalDate);
+    event usersPaidOut(address addressUser, uint amount, uint datePaidOut);
+    uint256 internal constant VALUEVERIFYMIN = 200;
+    uint256 internal constant VALUEVERIFYMED = 200;
+    uint256 internal constant VALUEVERIFYMAX = 500;
 
     //verify the assurance for stake
-    function verifyAssurance() internal view returns(uint) {
-        if(stakers[msg.sender] <= 0) {
-            revert("Necessary stake for assurance");
-        } else if(stakers[msg.sender] >= 1 && stakers[msg.sender] <= 2000) {
-            return VALUEVERIFYMIN;
-        } else if(stakers[msg.sender] >= 2001 && stakers[msg.sender] <= 5000) {
-            return VALUEVERIFYMED;
-        } 
+    // function verifyAssurance() public view returns (uint256) {
+    //     if (stakeInstance.stakers(msg.sender) == 0) {
+    //         revert("Necessary stake for assurance");
+    //     } else if (stakeInstance.stakers(msg.sender) >= 1 && stakeInstance.stakers(msg.sender) <= 2000) {
+    //         return VALUEVERIFYMIN;
+    //     } else if (stakeInstance.stakers(msg.sender) >= 2001 && stakeInstance.stakers(msg.sender) <= 5000) {
+    //         return VALUEVERIFYMED;
+    //     }
 
-        return VALUEVERIFYMAX;
+    //     return VALUEVERIFYMAX;
+    // }
+
+    function depositTokens(uint256 _amount) external onlyOwner {
+        myToken.transferFrom(msg.sender, address(this), _amount);
     }
 
     function makeLoan(uint256 _valueLoan, uint256 period) public {
-
-        //verify if user have a stake
-        verifyAssurance();
-
         // constraint
+        require(stakeInstance.stakers(msg.sender) > 0, "Necessary stake for assurance");
         require(!userLoans[msg.sender].activate, "You have a loan activate");
         require(userDeny[msg.sender] == false, "Dont have permission for loan");
         require(period >= 5, "The minumum period should be 5");
-        require(_valueLoan <= balanceOf(owner), "balance insufficient");
+        require(myToken.balanceOf(address(this)) >= _valueLoan, "Insufficient contract balance");
 
-        userLoans[msg.sender].valueLoan = _valueLoan;
-        transferFrom(owner, msg.sender, _valueLoan);
-        userLoans[msg.sender].initialDateAgreement = block.timestamp;
-        userLoans[msg.sender].finalDateAgreement = userLoans[msg.sender].initialDateAgreement + period;
+
+        myToken.transfer(msg.sender, _valueLoan);
+
 
         if (period >= 5 && period <= 20) {
             userLoans[msg.sender].fees = 5;
@@ -364,37 +193,58 @@ contract Loan is Stake {
             userLoans[msg.sender].fees = 3;
         }
 
-        userLoans[msg.sender].valueFees =
-            userLoans[msg.sender].valueLoan +
-            ((userLoans[msg.sender].valueLoan * userLoans[msg.sender].fees) /
-                100);
 
+        userLoans[msg.sender].valueLoan = _valueLoan;
+        userLoans[msg.sender].initialDateAgreement = block.timestamp;
+        userLoans[msg.sender].finalDateAgreement = userLoans[msg.sender].initialDateAgreement + period * 1 days;
+        userLoans[msg.sender].valueFees = userLoans[msg.sender].valueLoan + 
+        ((userLoans[msg.sender].valueLoan * userLoans[msg.sender].fees) / 100);
         userLoans[msg.sender].activate = true;
+        userLoans[msg.sender].status = LoanStatus.NotPay;
 
-        emit userMakeLoan(msg.sender, _valueLoan, block.timestamp, block.timestamp + period);
+        emit usersMakeLoan(
+            msg.sender,
+            _valueLoan,
+            block.timestamp,
+            block.timestamp + period
+        );
     }
 
     // deny the user for make loan
-    function denyUser(address _denyUser, string memory _reason) public onlyOwner
-    {
+    function denyUser(address _denyUser, ReasonDeny reason) public onlyOwner
+    {                         
         require(userDeny[_denyUser] = false, "User is already denied");
         userDeny[_denyUser] = true;
         userLoans[_denyUser].activate = false;
-        transferFrom(_denyUser, owner, userLoans[_denyUser].valueLoan);
-        // userLoans[_denyUser].valueLoan = 0;
-        emit userDenyEvent(_denyUser, _reason);
+        myToken.transferFrom(_denyUser, address(this), userLoans[_denyUser].valueLoan);
+        userLoans[_denyUser].valueLoan = 0;
+        emit usersDenyEvent(_denyUser, reason);
     }
 
     //payment the loan
-    // function paymentLoan() public {
-    //     require(userLoans[msg.sender].activate, "You not have a loan activate");
-    // }
+    function paymentLoan(uint amount) public {
+        require(userLoans[msg.sender].activate, "You not have a loan activate");
+        require(myToken.balanceOf(msg.sender) >= userLoans[msg.sender].valueFees, "Insufficient balance");
+        require(userLoans[msg.sender].valueFees <= amount, "Necessary payment");
+        
+        myToken.transferFrom(msg.sender, address(this), amount);
+
+        if (userLoans[msg.sender].valueFees == amount) {
+            userLoans[msg.sender].valueFees = 0;
+            userLoans[msg.sender].activate = false;
+            userLoans[msg.sender].status = LoanStatus.PaidOut;
+            emit usersPaidOut(msg.sender, amount, block.timestamp);
+        } else {
+            userLoans[msg.sender].valueFees -= amount;
+        }
+    }
 
     // verify balance loan
-    function getBalanceLoan() public view returns(uint) {
+    function getBalanceLoan() public view returns (uint256) {
         return userLoans[msg.sender].valueFees;
     }
+
+    function getBalanceContract() public view returns (uint) {
+        return myToken.balanceOf(address(this));
+    }
 }
-
-
-// Verificar caso for permitido o emprestimo, o valor que ele pode fazer de acordo com verifyAssurance
