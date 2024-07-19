@@ -31,4 +31,8 @@ contract BorrowTest is Test {
             1000 * 10 ** myToken.decimals()
         );
     }
+
+    function testStake() public {
+        
+    }
 }

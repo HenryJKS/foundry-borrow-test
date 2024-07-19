@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -8,11 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract MyToken is ERC20, ERC20Burnable, Ownable {
-
-    constructor()
-        ERC20("MyToken", "HJK")
-        Ownable(msg.sender)
-    {
+    constructor() ERC20("MyToken", "HJK") Ownable(msg.sender) {
         _mint(msg.sender, 1000 * 10 ** decimals());
     }
 
@@ -25,7 +20,7 @@ error Staking__TransferFailed();
 error Withdraw__TransferFailed();
 error Staking__NeedsMoreThanZero();
 
-contract Stake { 
+contract Stake {
     MyToken private mytoken;
 
     constructor(address tokenAddress) {
@@ -34,12 +29,12 @@ contract Stake {
 
     mapping(address => uint) public stakers;
     uint public totalSupplyStaked;
-    // rastreio de tempo
+    // tracking time
     mapping(address => uint) internal lastUpdateTime;
-    // rastreio de acumulação do token
+    // tracking token accumulation
     mapping(address => uint) public rewardAcumulatedPerUser;
-    uint public constant rewardRate = 2; // taxa de 2%
-    uint public constant rewardPeriod = 30; // ganho a cada 30s
+    uint public constant rewardRate = 2; // 2% rate
+    uint public constant rewardPeriod = 30; // gain every 30s
 
     event ApprovalStake(address approver, address spender, uint amount);
 
@@ -50,10 +45,10 @@ contract Stake {
         _;
     }
 
-    function getInstanceToken() public view returns(MyToken) {
+    function getInstanceToken() public view returns (MyToken) {
         return mytoken;
     }
-    
+
     // stake
     function stake(uint256 _amount) external updateData(msg.sender) {
         require(_amount > 0, "Staking: Amount must be greater than zero");
@@ -61,7 +56,7 @@ contract Stake {
         // Transfer tokens from user to contract
         bool success = mytoken.transferFrom(msg.sender, address(this), _amount);
         if (!success) {
-            revert Staking__TransferFailed(); 
+            revert Staking__TransferFailed();
         }
 
         stakers[msg.sender] += _amount;
@@ -70,8 +65,8 @@ contract Stake {
         emit ApprovalStake(msg.sender, address(this), _amount);
     }
 
-    // unstaked
-    function unstaked(uint _amount) external updateData(msg.sender) {
+    // unstake
+    function unstake(uint _amount) external updateData(msg.sender) {
         require(stakers[msg.sender] >= _amount, "Withdraw__TransferFailed");
 
         stakers[msg.sender] -= _amount;
@@ -82,20 +77,21 @@ contract Stake {
     }
 
     // policy rewards
-    function policyRewardsperToken(address staker) public view returns(uint) {
+    function policyRewardsperToken(address staker) public view returns (uint) {
         if (stakers[staker] == 0) {
             return 0;
         } else {
-            uint currentBalance = stakers[staker]; 
-            uint timeStaked = block.timestamp - lastUpdateTime[staker]; // tempo em stake
+            uint currentBalance = stakers[staker];
+            uint timeStaked = block.timestamp - lastUpdateTime[staker]; // time staked
 
-            uint totalReward = (currentBalance * rewardRate / 100) * (timeStaked / rewardPeriod);
+            uint totalReward = ((currentBalance * rewardRate) / 100) *
+                (timeStaked / rewardPeriod);
 
             return totalReward;
-        } 
+        }
     }
 
-    // claimRewards
+    // claim rewards
     function claimRewards() external updateData(msg.sender) {
         uint reward = rewardAcumulatedPerUser[msg.sender];
         require(reward > 0, "No rewards available");
@@ -111,32 +107,36 @@ contract Stake {
     // }
 }
 
-
-// Contrato Borrow terá uma quantidade específica de tokens para oferecer empréstimos
-// Terá que pagar os juros de acordo com valor pego e quanto tempo de empréstimo
-// O token seguirá o padrão ERC-20
+// The Borrow contract will have a specific amount of tokens to offer loans
+// It will have to pay interest according to the value taken and the loan duration
+// The token will follow the ERC-20 standard
 
 contract Borrow {
-
     Stake private stakeInstance;
     MyToken private myToken;
 
     constructor(address addrStake) {
-        
         stakeInstance = Stake(addrStake);
         myToken = MyToken(stakeInstance.getInstanceToken());
     }
- 
+
     modifier onlyOwner() {
         require(msg.sender == myToken.owner(), "only owner");
         _;
     }
 
     // i[0] => PaidOut, i[1] => NotPay
-    enum LoanStatus{PaidOut, NotPay}
+    enum LoanStatus {
+        PaidOut,
+        NotPay
+    }
 
     // i[0] => PaymentLate, i[1] => BadConduct, i[2] => Others
-    enum ReasonDeny{PaymentLate, BadConduct, Others}
+    enum ReasonDeny {
+        PaymentLate,
+        BadConduct,
+        Others
+    }
 
     struct Loans {
         uint256 valueLoan;
@@ -148,17 +148,21 @@ contract Borrow {
         LoanStatus status;
     }
 
-
     mapping(address => Loans) public userLoans;
     mapping(address => bool) public userDeny;
     event usersDenyEvent(address addressDeny, ReasonDeny rd);
-    event usersMakeLoan(address addressUser,uint256 amount,uint256 initialDate,uint256 finalDate);
+    event usersMakeLoan(
+        address addressUser,
+        uint256 amount,
+        uint256 initialDate,
+        uint256 finalDate
+    );
     event usersPaidOut(address addressUser, uint amount, uint datePaidOut);
     uint256 internal constant VALUEVERIFYMIN = 200;
     uint256 internal constant VALUEVERIFYMED = 200;
     uint256 internal constant VALUEVERIFYMAX = 500;
 
-    //verify the assurance for stake
+    // verify the assurance for stake
     // function verifyAssurance() public view returns (uint256) {
     //     if (stakeInstance.stakers(msg.sender) == 0) {
     //         revert("Necessary stake for assurance");
@@ -177,15 +181,19 @@ contract Borrow {
 
     function makeLoan(uint256 _valueLoan, uint256 period) public {
         // constraint
-        require(stakeInstance.stakers(msg.sender) > 0, "Necessary stake for assurance");
+        require(
+            stakeInstance.stakers(msg.sender) > 0,
+            "Necessary stake for assurance"
+        );
         require(!userLoans[msg.sender].activate, "You have a loan activate");
         require(userDeny[msg.sender] == false, "Dont have permission for loan");
-        require(period >= 5, "The minumum period should be 5");
-        require(myToken.balanceOf(address(this)) >= _valueLoan, "Insufficient contract balance");
-
+        require(period >= 5, "The minimum period should be 5");
+        require(
+            myToken.balanceOf(address(this)) >= _valueLoan,
+            "Insufficient contract balance"
+        );
 
         myToken.transfer(msg.sender, _valueLoan);
-
 
         if (period >= 5 && period <= 20) {
             userLoans[msg.sender].fees = 5;
@@ -193,12 +201,16 @@ contract Borrow {
             userLoans[msg.sender].fees = 3;
         }
 
-
         userLoans[msg.sender].valueLoan = _valueLoan;
         userLoans[msg.sender].initialDateAgreement = block.timestamp;
-        userLoans[msg.sender].finalDateAgreement = userLoans[msg.sender].initialDateAgreement + period * 1 days;
-        userLoans[msg.sender].valueFees = userLoans[msg.sender].valueLoan + 
-        ((userLoans[msg.sender].valueLoan * userLoans[msg.sender].fees) / 100);
+        userLoans[msg.sender].finalDateAgreement =
+            userLoans[msg.sender].initialDateAgreement +
+            period *
+            1 days;
+        userLoans[msg.sender].valueFees =
+            userLoans[msg.sender].valueLoan +
+            ((userLoans[msg.sender].valueLoan * userLoans[msg.sender].fees) /
+                100);
         userLoans[msg.sender].activate = true;
         userLoans[msg.sender].status = LoanStatus.NotPay;
 
@@ -210,23 +222,32 @@ contract Borrow {
         );
     }
 
-    // deny the user for make loan
-    function denyUser(address _denyUser, ReasonDeny reason) public onlyOwner
-    {                         
-        require(userDeny[_denyUser] = false, "User is already denied");
+    // deny the user for making loan
+    function denyUser(address _denyUser, ReasonDeny reason) public onlyOwner {
+        require(userDeny[_denyUser] == false, "User is already denied");
         userDeny[_denyUser] = true;
         userLoans[_denyUser].activate = false;
-        myToken.transferFrom(_denyUser, address(this), userLoans[_denyUser].valueLoan);
+        myToken.transferFrom(
+            _denyUser,
+            address(this),
+            userLoans[_denyUser].valueLoan
+        );
         userLoans[_denyUser].valueLoan = 0;
         emit usersDenyEvent(_denyUser, reason);
     }
 
-    //payment the loan
+    // payment of the loan
     function paymentLoan(uint amount) public {
-        require(userLoans[msg.sender].activate, "You not have a loan activate");
-        require(myToken.balanceOf(msg.sender) >= userLoans[msg.sender].valueFees, "Insufficient balance");
+        require(
+            userLoans[msg.sender].activate,
+            "You do not have an active loan"
+        );
+        require(
+            myToken.balanceOf(msg.sender) >= userLoans[msg.sender].valueFees,
+            "Insufficient balance"
+        );
         require(userLoans[msg.sender].valueFees <= amount, "Necessary payment");
-        
+
         myToken.transferFrom(msg.sender, address(this), amount);
 
         if (userLoans[msg.sender].valueFees == amount) {
@@ -249,9 +270,9 @@ contract Borrow {
     }
 }
 
-// Verificar caso for permitido o emprestimo, o valor que ele pode fazer de acordo com verifyAssurance
-// Verificar se o transferFrom está de acordo com as funções MakeLoan, DenyUser, PaymentLoan.
-// Verificar se o balance deve ser do owner ou do contrato.
+// Check if the loan is allowed, the value it can make according to verifyAssurance
+// Check if transferFrom is in accordance with the functions MakeLoan, DenyUser, PaymentLoan.
+// Check if the balance should be from the owner or the contract.
 /*
 1- approve Tokens
 2- transferFrom Token
