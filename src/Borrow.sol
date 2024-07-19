@@ -3,6 +3,9 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract MyToken is ERC20, ERC20Burnable, Ownable {
 
@@ -245,3 +248,11 @@ contract Borrow {
         return myToken.balanceOf(address(this));
     }
 }
+
+// Verificar caso for permitido o emprestimo, o valor que ele pode fazer de acordo com verifyAssurance
+// Verificar se o transferFrom está de acordo com as funções MakeLoan, DenyUser, PaymentLoan.
+// Verificar se o balance deve ser do owner ou do contrato.
+/*
+1- approve Tokens
+2- transferFrom Token
+*/
