@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 contract MyToken is ERC20, ERC20Burnable, Ownable {
-    constructor() ERC20("MyToken", "HJK") Ownable(msg.sender) {
-        _mint(msg.sender, 1000 * 10 ** decimals());
+    constructor(
+        address initialOwner
+    ) ERC20("MyToken", "HJK") Ownable(initialOwner) {
+        _mint(initialOwner, 1000 * 10 ** decimals());
     }
 
-    function mint(address to, uint256 amount) external {
+    function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 }
@@ -163,17 +164,13 @@ contract Borrow {
     uint256 internal constant VALUEVERIFYMAX = 500;
 
     // verify the assurance for stake
-    // function verifyAssurance() public view returns (uint256) {
-    //     if (stakeInstance.stakers(msg.sender) == 0) {
-    //         revert("Necessary stake for assurance");
-    //     } else if (stakeInstance.stakers(msg.sender) >= 1 && stakeInstance.stakers(msg.sender) <= 2000) {
-    //         return VALUEVERIFYMIN;
-    //     } else if (stakeInstance.stakers(msg.sender) >= 2001 && stakeInstance.stakers(msg.sender) <= 5000) {
-    //         return VALUEVERIFYMED;
-    //     }
+    function verifyAssurance() public view returns (bool) {
+        if (stakeInstance.stakers(msg.sender) == 0) {
+            return false;
+        }
 
-    //     return VALUEVERIFYMAX;
-    // }
+        return true;
+    }
 
     function depositTokens(uint256 _amount) external onlyOwner {
         myToken.transferFrom(msg.sender, address(this), _amount);
@@ -181,10 +178,7 @@ contract Borrow {
 
     function makeLoan(uint256 _valueLoan, uint256 period) public {
         // constraint
-        require(
-            stakeInstance.stakers(msg.sender) > 0,
-            "Necessary stake for assurance"
-        );
+        require(verifyAssurance() == true, "Need the stake for assurance");
         require(!userLoans[msg.sender].activate, "You have a loan activate");
         require(userDeny[msg.sender] == false, "Dont have permission for loan");
         require(period >= 5, "The minimum period should be 5");
@@ -262,7 +256,7 @@ contract Borrow {
 
     // verify balance loan
     function getBalanceLoan() public view returns (uint256) {
-        return userLoans[msg.sender].valueFees;
+        return userLoans[msg.sender].valueLoan;
     }
 
     function getBalanceContract() public view returns (uint) {
