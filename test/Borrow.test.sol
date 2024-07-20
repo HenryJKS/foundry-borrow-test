@@ -8,7 +8,7 @@ contract BorrowTest is Test {
     MyToken myToken;
     Stake stake;
     Borrow borrow;
-    address user1 = address(0x1);
+    address user1 = msg.sender;
     address owner = address(0x2);
 
     function setUp() public {
@@ -98,5 +98,36 @@ contract BorrowTest is Test {
         uint balanceLoanOfUser = borrow.getBalanceLoan();
 
         assertEq(balanceLoanOfUser, 100);
+    }
+
+    function testBorrowPayment() public {
+        vm.prank(myToken.owner());
+        myToken.transfer(user1, 2000);
+
+        vm.prank(user1);
+        myToken.approve(address(stake), 1000);
+
+        vm.prank(user1);
+        stake.stake(1000);
+
+        vm.prank(myToken.owner());
+        myToken.approve(address(borrow), 50000);
+
+        vm.prank(myToken.owner());
+        borrow.depositTokens(50000);
+
+        vm.prank(user1);
+        borrow.makeLoan(100, 5);
+
+        vm.prank(user1);
+        myToken.approve(address(borrow), 105);
+
+        vm.prank(user1);
+        borrow.paymentLoan(105);
+
+        vm.prank(user1);
+        uint status = borrow.returnStatus();
+
+        assertEq(status, 0);
     }
 }

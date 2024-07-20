@@ -254,20 +254,23 @@ contract Borrow {
         }
     }
 
-    // verify balance loan
+    function getBalanceContract() public view returns (uint) {
+        return myToken.balanceOf(address(this));
+    }
+
+    // Getting info per user
     function getBalanceLoan() public view returns (uint256) {
         return userLoans[msg.sender].valueLoan;
     }
 
-    function getBalanceContract() public view returns (uint) {
-        return myToken.balanceOf(address(this));
+    function getTotalPayment() public view returns(uint) {
+        return userLoans[msg.sender].valueFees;
     }
+
+    function returnStatus() public view returns(uint) {
+        return uint(userLoans[msg.sender].status);
+    }
+
 }
 
-// Check if the loan is allowed, the value it can make according to verifyAssurance
-// Check if transferFrom is in accordance with the functions MakeLoan, DenyUser, PaymentLoan.
-// Check if the balance should be from the owner or the contract.
-/*
-1- approve Tokens
-2- transferFrom Token
-*/
+// update the denyUser() for when the user not pay your loan, block and withdraw the amount in loan.
