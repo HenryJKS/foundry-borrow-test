@@ -1,3 +1,9 @@
+## Borrow
+
+Borrow is contract of loan, users can take out a loan, if they have assurance staked. Every loan has a time limit for repayment, if the payment is not made within this period, the user will be considered blocked and the loaned money will be withdrawn.
+
+`makeLoan()` - Init the loan.
+`denyUser()` - Block the user.
 
 ---
 
