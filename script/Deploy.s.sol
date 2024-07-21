@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "lib/forge-std/src/Script.sol";
 import "../src/Borrow.sol";
+import "../src/MyToken.sol";
+import "../src/Stake.sol";
 
 contract DeployScript is Script {
     function run() external {
