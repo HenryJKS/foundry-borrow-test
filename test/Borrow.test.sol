@@ -10,7 +10,7 @@ contract BorrowTest is Test {
     MyToken myToken;
     Stake stake;
     Borrow borrow;
-    address user1 = msg.sender;
+    address user1 = address(0x1);
     address owner = address(0x2);
 
     function setUp() public {
