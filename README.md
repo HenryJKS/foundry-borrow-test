@@ -1,9 +1,45 @@
-## Borrow
+# Borrow Smart Contract
 
-Borrow is contract of loan, users can take out a loan, if they have assurance staked. Every loan has a time limit for repayment, if the payment is not made within this period, the user will be considered blocked and the loaned money will be withdrawn.
+## Overview
 
-`makeLoan()` - Init the loan.
-`denyUser()` - Block the user.
+The `Borrow` smart contract is designed to facilitate loans using an ERC-20 token as collateral. Users can take out loans based on their staked tokens, and the contract manages loan terms, payments, and the ability to deny users under certain circumstances.
+
+## Contract Structure
+
+### Dependencies
+
+The `Borrow` contract depends on two other contracts:
+- `MyToken`: An ERC-20 token contract used for managing token transactions.
+- `Stake`: A staking contract that manages user stakes.
+
+### Constructor
+
+```solidity
+constructor(address addrStake)
+```
+
+- Initializes the Borrow contract with an instance of the Stake contract.
+- Sets the MyToken instance by retrieving the token address from the Stake contract.
+
+### Modifiers
+- onlyOwner: Restricts function access to the owner of the MyToken.
+
+### Enums
+| Enum Name      | Values | Description |
+| ----------- | ----------- | ----------- |
+| `LoanStatus`| `PaidOut`, `NotPay` | Represents the current status of a loan.
+| `ReasonDeny`| `PaymentLate`, `BadConduct`, `Others` | Reasons for denying a user from taking out a loan.
+
+### State Variables
+|Variable Name	|Type	|Description|
+| ----------- | ----------- | ----------- |
+|stakeInstance	|StakeInstance	|Instance of the staking contract|
+|myToken	|MyToken|	Instance of the token contract|
+|userLoans	|mapping|	Stores loan details for each user|
+|userDeny	|mapping|	Tracks whether a user has been denied loans|
+|VALUEVERIFYMIN	|uint256|	Minimum amount for loan verification (set to 200)|
+|VALUEVERIFYMED	|uint256|	Medium amount for loan verification (set to 200)|
+|VALUEVERIFYMAX	|uint256|	Maximum amount for loan verification (set to 500)|
 
 ---
 
